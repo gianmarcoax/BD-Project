@@ -1,7 +1,7 @@
-LINK de PAGINA WEB EN HOST
+LINK de PAGINA WEB EN HOST:
 
 http://omgplaygmac.000.pe/
 
-ADMINISTRADOR
+INGRESAR COMO ADMINISTRADOR:
 
 user: admin / password: adminpassword
