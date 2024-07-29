@@ -4,5 +4,4 @@ http://omgplaygmac.000.pe/
 
 USUARIO ADMINISTRADOR
 
-user: admin
-password: adminpassword
+user: admin / password: adminpassword
