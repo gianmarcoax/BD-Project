@@ -24,6 +24,9 @@ $items_per_page = 6;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $items_per_page;
 
+// Establecer la codificación a UTF-8
+$conn->set_charset("utf8mb4");
+
 // Obtener salas si se seleccionó un cine
 if (isset($_GET['cine_id'])) {
     $cine_id = $_GET['cine_id'];
@@ -148,7 +151,7 @@ $peliculas = $result->fetch_all(MYSQLI_ASSOC);
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="#">Admin Dashboard</a>
+        <a class="navbar-brand" href="../dashboard.php">Admin Dashboard</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -295,5 +298,9 @@ $peliculas = $result->fetch_all(MYSQLI_ASSOC);
             </ul>
         </nav>
     </div>
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>

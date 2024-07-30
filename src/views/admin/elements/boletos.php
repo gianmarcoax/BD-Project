@@ -20,6 +20,9 @@ $items_per_page = 6;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $items_per_page;
 
+// Establecer la codificación a UTF-8
+$conn->set_charset("utf8mb4");
+
 // Obtener todas las funciones con detalles adicionales
 $result = $conn->query("SELECT f.ID, p.Titulo, f.FechaFuncion, f.HoraInicio, s.NumeroSala, c.Nombre AS CineNombre FROM Funciones f INNER JOIN Peliculas p ON f.Pelicula_ID = p.ID INNER JOIN Salas s ON f.Sala_ID = s.ID INNER JOIN Cines c ON f.Cine_ID = c.ID");
 $funciones = $result->fetch_all(MYSQLI_ASSOC);
@@ -112,7 +115,7 @@ if (isset($_GET['delete'])) {
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="#">Admin Dashboard</a>
+        <a class="navbar-brand" href="../dashboard.php">Admin Dashboard</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -226,7 +229,7 @@ if (isset($_GET['delete'])) {
                     <th>Acciones</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody> 
                 <?php foreach ($boletos as $boleto): ?>
                     <tr>
                         <td><?php echo htmlspecialchars($boleto['ID']); ?></td>
@@ -257,5 +260,9 @@ if (isset($_GET['delete'])) {
             </ul>
         </nav>
     </div>
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>

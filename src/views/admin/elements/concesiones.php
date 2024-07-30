@@ -14,14 +14,39 @@ $items_per_page = 6;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $items_per_page;
 
-// Obtener concesiones
-$result = $conn->query("SELECT * FROM Concesiones LIMIT $items_per_page OFFSET $offset");
-$concesiones = $result->fetch_all(MYSQLI_ASSOC);
+// Establecer la codificación a UTF-8
+$conn->set_charset("utf8mb4");
 
-// Obtener el total de concesiones para la paginación
-$result = $conn->query("SELECT COUNT(*) FROM Concesiones");
-$total_items = $result->fetch_row()[0];
-$total_pages = ceil($total_items / $items_per_page);
+// Manejo de búsqueda y paginación AJAX
+if (isset($_GET['ajax']) && $_GET['ajax'] == '1') {
+    $search = $_GET['search'] ?? '';
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $offset = ($page - 1) * $items_per_page;
+
+    $stmt = $conn->prepare("SELECT * FROM Concesiones WHERE NombreProducto LIKE CONCAT('%',?,'%') OR Descripcion LIKE CONCAT('%',?,'%') OR Categoria LIKE CONCAT('%',?,'%') LIMIT ? OFFSET ?");
+    $stmt->bind_param("sssii", $search, $search, $search, $items_per_page, $offset);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $concesiones = $result->fetch_all(MYSQLI_ASSOC);
+
+    // Escapar datos de usuario para evitar XSS
+    foreach ($concesiones as &$concesion) {
+        foreach ($concesion as &$value) {
+            $value = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+        }
+    }
+
+    // Obtener el número total de concesiones para la paginación
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM Concesiones WHERE NombreProducto LIKE CONCAT('%',?,'%') OR Descripcion LIKE CONCAT('%',?,'%') OR Categoria LIKE CONCAT('%',?,'%')");
+    $stmt->bind_param("sss", $search, $search, $search);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $totalConcesiones = $result->fetch_assoc()['count'];
+    $totalPages = ceil($totalConcesiones / $items_per_page);
+
+    echo json_encode(['concesiones' => $concesiones, 'totalPages' => $totalPages]);
+    exit();
+}
 
 $editMode = false;
 $concesionEdit = null;
@@ -95,10 +120,59 @@ if (isset($_GET['delete'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionar Concesiones</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script>
+        function fetchConcesiones(search, page) {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', 'concesiones.php?ajax=1&search=' + encodeURIComponent(search) + '&page=' + page, true);
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    const concesiones = response.concesiones;
+                    const totalPages = response.totalPages;
+
+                    let html = '';
+                    for (let concesion of concesiones) {
+                        html += `<tr>
+                            <td>${concesion.ID}</td>
+                            <td>${concesion.NombreProducto}</td>
+                            <td>${concesion.Descripcion}</td>
+                            <td>${concesion.Precio}</td>
+                            <td>${concesion.Categoria}</td>
+                            <td>
+                                <a href="concesiones.php?edit=${concesion.ID}" class="btn btn-sm btn-warning">Editar</a>
+                                <a href="concesiones.php?delete=${concesion.ID}" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro de eliminar esta concesión?');">Eliminar</a>
+                            </td>
+                        </tr>`;
+                    }
+                    document.querySelector('tbody').innerHTML = html;
+
+                    // Actualizar la paginación
+                    let paginationHtml = '';
+                    for (let i = 1; i <= totalPages; i++) {
+                        paginationHtml += `<li class="page-item ${i == page ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="fetchConcesiones('${search}', ${i}); return false;">${i}</a>
+                        </li>`;
+                    }
+                    document.querySelector('.pagination').innerHTML = paginationHtml;
+                }
+            };
+            xhr.send();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.querySelector('input[name="search"]');
+            searchInput.addEventListener('input', function() {
+                fetchConcesiones(searchInput.value, 1);
+            });
+
+            // Inicializar la primera carga de concesiones
+            fetchConcesiones('', 1);
+        });
+    </script>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="#">Admin Dashboard</a>
+        <a class="navbar-brand" href="../dashboard.php">Admin Dashboard</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -147,25 +221,34 @@ if (isset($_GET['delete'])) {
 
             <div class="form-group">
                 <label for="nombre_producto">Nombre del Producto</label>
-                <input type="text" class="form-control" id="nombre_producto" name="nombre_producto" value="<?php echo $concesionEdit['NombreProducto'] ?? ''; ?>" required>
+                <input type="text" class="form-control" id="nombre_producto" name="nombre_producto" value="<?php echo htmlspecialchars($concesionEdit['NombreProducto'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
             </div>
 
             <div class="form-group">
                 <label for="descripcion">Descripción</label>
-                <input type="text" class="form-control" id="descripcion" name="descripcion" value="<?php echo $concesionEdit['Descripcion'] ?? ''; ?>" required>
+                <input type="text" class="form-control" id="descripcion" name="descripcion" value="<?php echo htmlspecialchars($concesionEdit['Descripcion'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
             </div>
 
             <div class="form-group">
                 <label for="precio">Precio</label>
-                <input type="number" step="0.01" class="form-control" id="precio" name="precio" value="<?php echo $concesionEdit['Precio'] ?? ''; ?>" required>
+                <input type="number" step="0.01" class="form-control" id="precio" name="precio" value="<?php echo htmlspecialchars($concesionEdit['Precio'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
             </div>
 
             <div class="form-group">
                 <label for="categoria">Categoría</label>
-                <input type="text" class="form-control" id="categoria" name="categoria" value="<?php echo $concesionEdit['Categoria'] ?? ''; ?>" required>
+                <input type="text" class="form-control" id="categoria" name="categoria" value="<?php echo htmlspecialchars($concesionEdit['Categoria'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
             </div>
 
             <button type="submit" class="btn btn-primary">Guardar</button>
+        </form>
+
+        <form method="get" action="concesiones.php" class="mb-4">
+            <div class="input-group">
+                <input type="text" class="form-control" name="search" placeholder="Buscar por nombre, descripción o categoría">
+                <div class="input-group-append">
+                    <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+                </div>
+            </div>
         </form>
 
         <h3>Lista de Concesiones</h3>
@@ -181,32 +264,19 @@ if (isset($_GET['delete'])) {
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($concesiones as $concesion): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($concesion['ID']); ?></td>
-                        <td><?php echo htmlspecialchars($concesion['NombreProducto']); ?></td>
-                        <td><?php echo htmlspecialchars($concesion['Descripcion']); ?></td>
-                        <td><?php echo htmlspecialchars($concesion['Precio']); ?></td>
-                        <td><?php echo htmlspecialchars($concesion['Categoria']); ?></td>
-                        <td>
-                            <a href="concesiones.php?edit=<?php echo $concesion['ID']; ?>" class="btn btn-sm btn-warning">Editar</a>
-                            <a href="concesiones.php?delete=<?php echo $concesion['ID']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro de eliminar esta concesión?');">Eliminar</a>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
+                <!-- Los datos se llenarán a través de AJAX -->
             </tbody>
         </table>
 
-        <!-- Paginación -->
         <nav aria-label="Page navigation">
             <ul class="pagination">
-                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                    <li class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
-                        <a class="page-link" href="concesiones.php?page=<?php echo $i; ?>"><?php echo $i; ?></a>
-                    </li>
-                <?php endfor; ?>
+                <!-- La paginación se llenará a través de AJAX -->
             </ul>
         </nav>
     </div>
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>

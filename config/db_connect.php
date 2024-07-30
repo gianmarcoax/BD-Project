@@ -1,7 +1,7 @@
 <?php
 $servername = "localhost";
 $username = "root";
-$password = "Gian3056";
+$password = "";
 $dbname = "cine_GMAC";
 
 // Crear conexión

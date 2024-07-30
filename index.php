@@ -20,6 +20,9 @@ if (isLoggedIn()) {
     $username = $_SESSION['username'];
 }
 
+// Establecer la codificación a UTF-8
+$conn->set_charset("utf8mb4");
+
 // Obtener películas en cartelera
 $sql = "SELECT * FROM Peliculas LIMIT 5"; // Limitamos a 5 para este ejemplo
 $result = $conn->query($sql);
